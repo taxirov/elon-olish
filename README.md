@@ -94,10 +94,10 @@ olmaydi.
 
 ## Murojaatlar ro'yxatini ko'rish (admin sahifa)
 
-Brauzerda oching:
+Brauzerda oching (bosh sahifa endi shu ro'yxatga yo'naltiriladi):
 
 ```
-https://<loyiha-nomi>.vercel.app/api/applications?key=<WEBHOOK_SECRET yoki ADMIN_SECRET qiymati>
+https://<loyiha-nomi>.vercel.app/?key=<WEBHOOK_SECRET yoki ADMIN_SECRET qiymati>
 ```
 
 Jadval ko'rinishida barcha murojaatlar (manzil, narx, telefon, mijoz,
