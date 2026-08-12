@@ -2,13 +2,13 @@
   "name": "telegram-mulk-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "Ko'chmas mulk e'lonlarini qabul qiluvchi Telegram bot (Vercel serverless + Vercel KV)",
+  "description": "Ko'chmas mulk e'lonlarini qabul qiluvchi Telegram bot (Vercel serverless + Neon Postgres)",
   "main": "api/webhook.js",
   "scripts": {
     "dev": "vercel dev"
   },
   "dependencies": {
-    "@vercel/kv": "^2.0.0",
+    "@neondatabase/serverless": "^0.10.4",
     "telegraf": "^4.16.3"
   }
 }

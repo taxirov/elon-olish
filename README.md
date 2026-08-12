@@ -3,7 +3,7 @@
 Telegram bot: foydalanuvchi 9 bosqichda ariza to'ldiradi (viloyat → tuman →
 manzil → mulk turi → narx → telefon → tashqi rasmlar → ichki rasmlar →
 hujjatlar) va tugagach ariza belgilangan guruhga (`-1002734287812`)
-yuboriladi. Har bir ariza noyob ID bilan Vercel KV bazasiga yoziladi.
+yuboriladi. Har bir ariza noyob ID bilan Neon Postgres bazasiga yoziladi.
 
 ## Tuzilma
 
@@ -12,7 +12,7 @@ api/webhook.js      Telegram webhook (asosiy endpoint)
 api/set-webhook.js  Webhookni ro'yxatdan o'tkazish uchun bir martalik yordamchi
 lib/bot.js           Bot logikasi (Telegraf Wizard scene, 11 bosqich)
 lib/regions.js        Barcha viloyat/tuman ro'yxati
-lib/store.js          Vercel KV: session saqlash + arizalarni bazaga yozish
+lib/store.js          Neon Postgres: session saqlash + arizalarni bazaga yozish
 ```
 
 ## 1. Vercel loyihasini sozlash
@@ -23,29 +23,41 @@ cd telegram-mulk-bot
 vercel link          # loyihani Vercel akkauntingizga bog'laydi
 ```
 
-## 2. Ma'lumotlar bazasini ulash (Vercel KV / Upstash Redis)
+## 2. Ma'lumotlar bazasini ulash (Neon Postgres)
 
-Eslatma: Vercel "KV" endi to'g'ridan-to'g'ri emas, **Upstash for Redis**
-integratsiyasi orqali beriladi (lekin `@vercel/kv` paketi bilan to'liq
-mos — kod o'zgarmaydi). Vercel dashboard → loyihangiz → **Storage** →
-**Create Database** → **Upstash — Redis** ni tanlang va shu loyihaga
-**Connect** qiling. Ulanganda Vercel avtomatik ravishda `KV_REST_API_URL`,
-`KV_REST_API_TOKEN` kabi environment variable'larni qo'shib qo'yadi —
-qo'lda hech narsa kiritish shart emas.
+Ikki yo'l bor:
+
+**A) To'g'ridan-to'g'ri Neon'da (tavsiya etiladi — karta so'ramaydi):**
+1. [neon.tech](https://neon.tech) da ro'yxatdan o'ting, **Create Project**.
+2. Loyiha yaratilgach, dashboard'da **Connection string** ni nusxalang
+   (`postgresql://...`).
+3. Buni Vercel loyihangizga `DATABASE_URL` nomi bilan environment variable
+   sifatida qo'shing (pastga qarang).
+
+**B) Vercel Marketplace orqali:**
+Vercel dashboard → loyihangiz → **Storage** → **Create Database** → **Neon**
+ni tanlang va shu loyihaga **Connect** qiling — `DATABASE_URL` avtomatik
+qo'shiladi. (Ba'zida Marketplace to'lov usuli so'rashi mumkin — shu holda
+yuqoridagi A variantidan foydalaning.)
+
+Jadvallar (`bot_sessions`, `applications`) va ID hisoblagich birinchi
+so'rovda o'zi avtomatik yaratiladi — qo'lda migration kerak emas.
 
 ## 3. Environment variable'lar
 
 `.env.local` faylida tayyor qiymatlar bor (bot tokeni, guruh ID, webhook
-secret). Ularni Vercel loyihangizga qo'shing:
+secret). `DATABASE_URL`ni ustidan yozib qo'ying, so'ng hammasini Vercel'ga
+qo'shing:
 
 ```bash
 vercel env add TELEGRAM_BOT_TOKEN
 vercel env add GROUP_CHAT_ID
 vercel env add WEBHOOK_SECRET
+vercel env add DATABASE_URL
 ```
 
 (Yoki Vercel dashboard → Settings → Environment Variables orqali qo'lda
-kiriting — qiymatlar `.env.local` faylida turibdi.)
+kiriting.)
 
 ## 4. Deploy qilish
 
@@ -82,16 +94,17 @@ olmaydi.
 
 ## Ma'lumotlar bazasi
 
-Har bir ariza `mulk:application:<ID>` kaliti ostida to'liq holda (barcha
-rasm file_id'lari, manzil, narx, telefon va h.k.) Vercel KV'da saqlanadi.
-`ID` formati: `M-000001`, `M-000002`, ... (`mulk:app_counter` orqali
-ketma-ket generatsiya qilinadi). Barcha ID'lar ro'yxati `mulk:application_index`
-kalitida turadi.
+Har bir ariza `applications` jadvalida `id` (masalan `M-000001`) bo'yicha
+JSONB ustunida to'liq holda (barcha rasm file_id'lari, manzil, narx,
+telefon va h.k.) saqlanadi. ID'lar `application_id_seq` ketma-ketligi
+orqali generatsiya qilinadi. Kerak bo'lsa, arizalarni SQL orqali ko'rish
+mumkin:
 
-> Eslatma: so'rovda "Vercel KV/Postgres" aytilgan edi — bu loyiha oddiy
-> key-by-id saqlash uchun qulayroq bo'lgani sababli **Vercel KV** dan
-> foydalanadi. Agar SQL so'rovlar, filtrlash yoki admin panel kerak bo'lsa,
-> keyinchalik Vercel Postgres'ga ham osongina ko'chirish mumkin.
+```sql
+SELECT id, data->>'regionName', data->>'price', created_at
+FROM applications
+ORDER BY created_at DESC;
+```
 
 ## Test qilish (lokal)
 
@@ -100,6 +113,6 @@ npm install
 vercel dev
 ```
 
-`vercel dev` KV env variable'larini avtomatik ulaydi, lekin webhookni
-lokal serverga ulash uchun ngrok kabi tunnel kerak bo'ladi. Odatda eng
-qulayi — to'g'ridan-to'g'ri Vercel'ga deploy qilib sinash.
+`vercel dev` `DATABASE_URL` kabi env variable'larni avtomatik ulaydi, lekin
+webhookni lokal serverga ulash uchun ngrok kabi tunnel kerak bo'ladi.
+Odatda eng qulayi — to'g'ridan-to'g'ri Vercel'ga deploy qilib sinash.
