@@ -92,6 +92,19 @@ Bot allaqachon `-1002734287812` guruhiga admin (xabar yozish huquqi bilan)
 sifatida qo'shilgan bo'lishi kerak — aks holda arizalarni guruhga yubora
 olmaydi.
 
+## Murojaatlar ro'yxatini ko'rish (admin sahifa)
+
+Brauzerda oching:
+
+```
+https://<loyiha-nomi>.vercel.app/api/applications?key=<WEBHOOK_SECRET yoki ADMIN_SECRET qiymati>
+```
+
+Jadval ko'rinishida barcha murojaatlar (manzil, narx, telefon, mijoz,
+hujjat holati va rasmlar) chiqadi, 20 tadan sahifalab ko'rsatiladi. Alohida
+kalit belgilamoqchi bo'lsangiz, `ADMIN_SECRET` environment variable
+qo'shing — bo'lmasa `WEBHOOK_SECRET` ishlatiladi.
+
 ## Ma'lumotlar bazasi
 
 Har bir ariza `applications` jadvalida `id` (masalan `M-000001`) bo'yicha
