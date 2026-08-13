@@ -38,7 +38,6 @@ function statusCell(app, key, page) {
 
   const extraInfo = [
     app.assignee ? `<div class="muted">👤 ${escapeHtml(app.assignee)}</div>` : '',
-    app.analogId ? `<div class="muted">🔗 Analog ID: ${escapeHtml(app.analogId)}</div>` : '',
     app.rejectionReason ? `<div class="muted">✏️ Sabab: ${escapeHtml(app.rejectionReason)}</div>` : '',
   ].join('');
 
@@ -70,6 +69,7 @@ function renderRow(app, key, page) {
   return `
     <tr>
       <td>${escapeHtml(app.id)}</td>
+      <td>${app.analogId ? escapeHtml(app.analogId) : '<span class="muted">—</span>'}</td>
       <td>${escapeHtml(new Date(app.createdAt).toLocaleString('uz-UZ'))}</td>
       <td>${escapeHtml(app.regionName)}, ${escapeHtml(app.districtName)}<br/><span class="muted">${escapeHtml(app.address)}</span></td>
       <td>${escapeHtml(app.propertyType)}</td>
@@ -129,11 +129,11 @@ function renderPage({ applications, total, page, key }) {
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>Sana</th><th>Manzil</th><th>Turi</th><th>Narx</th>
+          <th>Murojaat ID</th><th>Analog ID</th><th>Sana</th><th>Manzil</th><th>Turi</th><th>Narx</th>
           <th>Telefon</th><th>Mijoz</th><th>Holat</th><th>Hujjat</th><th>Rasmlar</th>
         </tr>
       </thead>
-      <tbody>${rows || '<tr><td colspan="10" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="11" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
     </table>
   </div>
   <div class="pagination">${prevLink}${nextLink}</div>
