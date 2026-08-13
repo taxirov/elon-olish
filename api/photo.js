@@ -5,6 +5,20 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_KEY = process.env.ADMIN_SECRET || process.env.WEBHOOK_SECRET;
 
+const MIME_BY_EXT = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  pdf: 'application/pdf',
+};
+
+function guessContentType(filePath, fallback) {
+  const ext = (filePath.split('.').pop() || '').toLowerCase();
+  return MIME_BY_EXT[ext] || fallback || 'application/octet-stream';
+}
+
 module.exports = async (req, res) => {
   if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
     res.status(401).json({ ok: false, error: 'Unauthorized' });
@@ -27,9 +41,13 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${info.result.file_path}`;
+    const filePath = info.result.file_path;
+    const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
     const fileResp = await fetch(fileUrl);
-    res.setHeader('Content-Type', fileResp.headers.get('content-type') || 'application/octet-stream');
+    const rawType = fileResp.headers.get('content-type');
+    const contentType =
+      rawType && rawType !== 'application/octet-stream' ? rawType : guessContentType(filePath, rawType);
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     const buffer = Buffer.from(await fileResp.arrayBuffer());
     res.status(200).send(buffer);
