@@ -1,10 +1,10 @@
 // Updates an application's status from the admin page (api/applications.js).
 // Some statuses require extra data:
-//   korib_chiqilmoqda -> assignee (who's handling it)
-//   analog_tayyor      -> analogId (id of the matching analog listing)
-//   rad_etildi         -> rejectionReason (also sent to the applicant via the bot)
+//   korib_chiqilmoqda / qayta_korilmoqda -> assignee (who's handling it)
+//   analog_tayyor                         -> analogId (id of the matching analog listing)
+//   rad_etildi                            -> rejectionReason (also sent to the applicant via the bot)
 const { updateApplicationStatus } = require('../lib/store');
-const { STATUS_ORDER, ASSIGNEES } = require('../lib/statuses');
+const { STATUS_ORDER, ASSIGNEE_REQUIRED_STATUSES, ASSIGNEES } = require('../lib/statuses');
 
 const ADMIN_KEY = process.env.ADMIN_SECRET || process.env.WEBHOOK_SECRET;
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
 
   const updates = { status };
 
-  if (status === 'korib_chiqilmoqda') {
+  if (ASSIGNEE_REQUIRED_STATUSES.includes(status)) {
     if (!assignee || !ASSIGNEES.includes(assignee)) {
       res.status(400).send("Foydalanuvchini tanlang");
       return;

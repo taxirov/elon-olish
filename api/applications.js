@@ -6,6 +6,7 @@ const {
   STATUS_LABELS,
   STATUS_ICONS,
   STATUS_COLORS,
+  ASSIGNEE_REQUIRED_STATUSES,
   ASSIGNEES,
   ASSIGNEE_COLORS,
 } = require('../lib/statuses');
@@ -297,20 +298,22 @@ function renderPage({ applications, total, statusCounts, page, key }) {
       if (e.key === 'Escape') closeLightbox();
     });
 
+    const assigneeRequiredStatuses = ${JSON.stringify(ASSIGNEE_REQUIRED_STATUSES)};
+
     function toggleStatusFields(select) {
       const form = select.closest('form');
       form.querySelectorAll('.extra-field').forEach((el) => el.classList.remove('show'));
-      const map = {
-        korib_chiqilmoqda: '.assignee-field',
-        analog_tayyor: '.analog-field',
-        rad_etildi: '.reason-field',
-      };
-      const sel = map[select.value];
-      if (sel) form.querySelector(sel).classList.add('show');
+      if (assigneeRequiredStatuses.includes(select.value)) {
+        form.querySelector('.assignee-field').classList.add('show');
+      } else if (select.value === 'analog_tayyor') {
+        form.querySelector('.analog-field').classList.add('show');
+      } else if (select.value === 'rad_etildi') {
+        form.querySelector('.reason-field').classList.add('show');
+      }
     }
     function validateStatusForm(form) {
       const status = form.status.value;
-      if (status === 'korib_chiqilmoqda' && !form.assignee.value) {
+      if (assigneeRequiredStatuses.includes(status) && !form.assignee.value) {
         alert("Foydalanuvchini tanlang");
         return false;
       }
