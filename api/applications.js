@@ -19,10 +19,10 @@ function escapeHtml(value) {
 function photoThumbs(fileIds, key) {
   if (!fileIds || !fileIds.length) return '<span class="muted">yo\'q</span>';
   return fileIds
-    .map(
-      (id) =>
-        `<a href="/api/photo?key=${encodeURIComponent(key)}&file_id=${encodeURIComponent(id)}" target="_blank"><img class="thumb" src="/api/photo?key=${encodeURIComponent(key)}&file_id=${encodeURIComponent(id)}" loading="lazy" /></a>`,
-    )
+    .map((id) => {
+      const url = `/api/photo?key=${encodeURIComponent(key)}&file_id=${encodeURIComponent(id)}`;
+      return `<img class="thumb" src="${url}" loading="lazy" onclick="openLightbox(this.src)" />`;
+    })
     .join('');
 }
 
@@ -126,6 +126,10 @@ function renderPage({ applications, total, page, key }) {
   .extra-field.show { display: block; }
   .extra-field select, .extra-field input, .extra-field textarea { font-size: 12px; width: 150px; font-family: inherit; }
   .extra-field textarea { height: 44px; resize: vertical; }
+  .thumb { cursor: zoom-in; }
+  .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; }
+  .lightbox.show { display: flex; }
+  .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 6px; }
 </style>
 </head>
 <body>
@@ -143,7 +147,21 @@ function renderPage({ applications, total, page, key }) {
     </table>
   </div>
   <div class="pagination">${prevLink}${nextLink}</div>
+  <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="" />
+  </div>
   <script>
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('show');
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('show');
+      document.getElementById('lightbox-img').src = '';
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
     function toggleStatusFields(select) {
       const form = select.closest('form');
       form.querySelectorAll('.extra-field').forEach((el) => el.classList.remove('show'));
