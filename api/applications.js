@@ -4,10 +4,12 @@ const { listApplications, getStatusCounts } = require('../lib/store');
 const {
   STATUS_ORDER,
   STATUS_LABELS,
+  STATUS_ICONS,
   STATUS_COLORS,
   ASSIGNEES,
   ASSIGNEE_COLORS,
 } = require('../lib/statuses');
+const { icon } = require('../lib/icons');
 
 const ADMIN_KEY = process.env.ADMIN_SECRET || process.env.WEBHOOK_SECRET;
 const PAGE_SIZE = 20;
@@ -47,10 +49,10 @@ function assigneeCell(app) {
 function statusCell(app) {
   const current = currentStatusOf(app);
   const reason = app.rejectionReason
-    ? `<div class="muted">✏️ Sabab: ${escapeHtml(app.rejectionReason)}</div>`
+    ? `<div class="muted note">${icon('pencil', 12)}Sabab: ${escapeHtml(app.rejectionReason)}</div>`
     : '';
   return `
-    <span class="status-badge" style="background:${STATUS_COLORS[current]}">${escapeHtml(STATUS_LABELS[current])}</span>
+    <span class="status-badge" style="background:${STATUS_COLORS[current]}">${icon(STATUS_ICONS[current])}${escapeHtml(STATUS_LABELS[current])}</span>
     ${reason}`;
 }
 
@@ -100,7 +102,7 @@ function renderRow(app, key, page) {
       <td>${escapeHtml(app.fullName || 'Nomaʼlum')}${app.username ? `<br/><span class="muted">@${escapeHtml(app.username)}</span>` : ''}</td>
       <td>${assigneeCell(app)}</td>
       <td>${statusCell(app)}</td>
-      <td>${app.documentsVerifiedBadge ? '✅' : '—'}</td>
+      <td>${app.documentsVerifiedBadge ? `<span class="doc-yes">${icon('check', 14)}</span>` : '<span class="muted">—</span>'}</td>
       <td class="photos">
         <div class="muted">Tashqi (${app.exteriorPhotos.length})</div>
         ${photoThumbs(app.exteriorPhotos, key)}
@@ -115,13 +117,13 @@ function renderStatCards(statusCounts, total) {
   const allCard = `
     <div class="stat-card active" data-filter="all" onclick="setFilter('all')" style="--accent-color:${ACCENT}">
       <div class="num">${total}</div>
-      <div class="label">Barchasi</div>
+      <div class="label">${icon('layers', 13)}Barchasi</div>
     </div>`;
   const cards = STATUS_ORDER.map(
     (s) => `
     <div class="stat-card" data-filter="${s}" onclick="setFilter('${s}')" style="--accent-color:${STATUS_COLORS[s]}">
       <div class="num">${statusCounts[s] || 0}</div>
-      <div class="label">${escapeHtml(STATUS_LABELS[s])}</div>
+      <div class="label">${icon(STATUS_ICONS[s], 13)}${escapeHtml(STATUS_LABELS[s])}</div>
     </div>`,
   ).join('');
   return allCard + cards;
@@ -164,7 +166,8 @@ function renderPage({ applications, total, statusCounts, page, key }) {
     padding: 32px clamp(16px, 4vw, 48px);
   }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-  .topbar h1 { font-size: 24px; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .topbar h1 { font-size: 24px; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .brand-icon { color: var(--accent); display: inline-flex; }
   .topbar .count-badge { background: var(--accent); color: #fff; font-size: 13px; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
   .topbar p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
   .search-box input {
@@ -183,7 +186,8 @@ function renderPage({ applications, total, statusCounts, page, key }) {
   .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,24,40,.1); }
   .stat-card.active { outline: 2px solid var(--accent-color, var(--accent)); outline-offset: -1px; }
   .stat-card .num { font-size: 22px; font-weight: 700; line-height: 1.2; }
-  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+  .stat-card .label .icon { color: var(--accent-color, var(--accent)); }
 
   .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; }
   .table-scroll { overflow-x: auto; }
@@ -199,7 +203,10 @@ function renderPage({ applications, total, statusCounts, page, key }) {
   .avatar { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   .avatar .dot { width: 22px; height: 22px; min-width: 22px; border-radius: 50%; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 
-  .status-badge { display: inline-block; color: #fff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .status-badge { display: inline-flex; align-items: center; gap: 5px; color: #fff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .icon { vertical-align: middle; flex-shrink: 0; }
+  .note { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+  .doc-yes { color: #16a34a; display: inline-flex; }
 
   .photos { min-width: 170px; }
   .thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; margin: 2px; cursor: zoom-in; border: 1px solid var(--border); transition: transform .15s ease; }
@@ -230,7 +237,7 @@ function renderPage({ applications, total, statusCounts, page, key }) {
 <body>
   <div class="topbar">
     <div>
-      <h1>🏡 Murojaatlar <span class="count-badge">${total}</span></h1>
+      <h1><span class="brand-icon">${icon('home', 20)}</span>Murojaatlar <span class="count-badge">${total}</span></h1>
       <p>Barcha kelib tushgan e'lon arizalari bitta joyda</p>
     </div>
     <div class="search-box">
