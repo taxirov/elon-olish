@@ -26,7 +26,19 @@ function photoThumbs(fileIds, key) {
     .join('');
 }
 
-function statusCell(app, key, page) {
+function statusCell(app) {
+  const current = STATUS_ORDER.includes(app.status) ? app.status : 'yuborilgan';
+  const extraInfo = [
+    app.assignee ? `<div class="muted">👤 ${escapeHtml(app.assignee)}</div>` : '',
+    app.rejectionReason ? `<div class="muted">✏️ Sabab: ${escapeHtml(app.rejectionReason)}</div>` : '',
+  ].join('');
+
+  return `
+    <span class="status-badge" style="background:${STATUS_COLORS[current]}">${escapeHtml(STATUS_LABELS[current])}</span>
+    ${extraInfo}`;
+}
+
+function actionsCell(app, key, page) {
   const current = STATUS_ORDER.includes(app.status) ? app.status : 'yuborilgan';
   const options = STATUS_ORDER.map(
     (s) => `<option value="${s}" ${s === current ? 'selected' : ''}>${escapeHtml(STATUS_LABELS[s])}</option>`,
@@ -36,14 +48,7 @@ function statusCell(app, key, page) {
       `<option value="${escapeHtml(name)}" ${name === app.assignee ? 'selected' : ''}>${escapeHtml(name)}</option>`,
   ).join('');
 
-  const extraInfo = [
-    app.assignee ? `<div class="muted">👤 ${escapeHtml(app.assignee)}</div>` : '',
-    app.rejectionReason ? `<div class="muted">✏️ Sabab: ${escapeHtml(app.rejectionReason)}</div>` : '',
-  ].join('');
-
   return `
-    <span class="status-badge" style="background:${STATUS_COLORS[current]}">${escapeHtml(STATUS_LABELS[current])}</span>
-    ${extraInfo}
     <form method="POST" action="/api/set-status" class="status-form" onsubmit="return validateStatusForm(this)">
       <input type="hidden" name="key" value="${escapeHtml(key)}" />
       <input type="hidden" name="id" value="${escapeHtml(app.id)}" />
@@ -76,7 +81,7 @@ function renderRow(app, key, page) {
       <td>${escapeHtml(app.price)}</td>
       <td>${escapeHtml(app.phone)}</td>
       <td>${escapeHtml(app.fullName || 'Nomaʼlum')}${app.username ? `<br/><span class="muted">@${escapeHtml(app.username)}</span>` : ''}</td>
-      <td>${statusCell(app, key, page)}</td>
+      <td>${statusCell(app)}</td>
       <td>${app.documentsVerifiedBadge ? '✅' : '—'}</td>
       <td class="photos">
         <div class="muted">Tashqi (${app.exteriorPhotos.length})</div>
@@ -84,6 +89,7 @@ function renderRow(app, key, page) {
         <div class="muted">Ichki (${app.interiorPhotos.length})</div>
         ${photoThumbs(app.interiorPhotos, key)}
       </td>
+      <td>${actionsCell(app, key, page)}</td>
     </tr>`;
 }
 
@@ -130,10 +136,10 @@ function renderPage({ applications, total, page, key }) {
       <thead>
         <tr>
           <th>Murojaat ID</th><th>Analog ID</th><th>Sana</th><th>Manzil</th><th>Turi</th><th>Narx</th>
-          <th>Telefon</th><th>Mijoz</th><th>Holat</th><th>Hujjat</th><th>Rasmlar</th>
+          <th>Telefon</th><th>Mijoz</th><th>Holat</th><th>Hujjat</th><th>Rasmlar</th><th>Amallar</th>
         </tr>
       </thead>
-      <tbody>${rows || '<tr><td colspan="11" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="12" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
     </table>
   </div>
   <div class="pagination">${prevLink}${nextLink}</div>
