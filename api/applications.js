@@ -1,6 +1,7 @@
 // Admin page: view submitted applications.
 //   https://<project>.vercel.app/api/applications?key=ADMIN_KEY
 const { listApplications } = require('../lib/store');
+const { STATUS_ORDER, STATUS_LABELS, STATUS_COLORS } = require('../lib/statuses');
 
 const ADMIN_KEY = process.env.ADMIN_SECRET || process.env.WEBHOOK_SECRET;
 const PAGE_SIZE = 20;
@@ -25,7 +26,23 @@ function photoThumbs(fileIds, key) {
     .join('');
 }
 
-function renderRow(app, key) {
+function statusCell(app, key, page) {
+  const current = STATUS_ORDER.includes(app.status) ? app.status : 'yuborilgan';
+  const options = STATUS_ORDER.map(
+    (s) => `<option value="${s}" ${s === current ? 'selected' : ''}>${escapeHtml(STATUS_LABELS[s])}</option>`,
+  ).join('');
+  return `
+    <span class="status-badge" style="background:${STATUS_COLORS[current]}">${escapeHtml(STATUS_LABELS[current])}</span>
+    <form method="POST" action="/api/set-status" class="status-form">
+      <input type="hidden" name="key" value="${escapeHtml(key)}" />
+      <input type="hidden" name="id" value="${escapeHtml(app.id)}" />
+      <input type="hidden" name="page" value="${page}" />
+      <select name="status">${options}</select>
+      <button type="submit">O'zgartirish</button>
+    </form>`;
+}
+
+function renderRow(app, key, page) {
   return `
     <tr>
       <td>${escapeHtml(app.id)}</td>
@@ -35,6 +52,7 @@ function renderRow(app, key) {
       <td>${escapeHtml(app.price)}</td>
       <td>${escapeHtml(app.phone)}</td>
       <td>${escapeHtml(app.fullName || 'Nomaʼlum')}${app.username ? `<br/><span class="muted">@${escapeHtml(app.username)}</span>` : ''}</td>
+      <td>${statusCell(app, key, page)}</td>
       <td>${app.documentsVerifiedBadge ? '✅' : '—'}</td>
       <td class="photos">
         <div class="muted">Tashqi (${app.exteriorPhotos.length})</div>
@@ -47,7 +65,7 @@ function renderRow(app, key) {
 
 function renderPage({ applications, total, page, key }) {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const rows = applications.map((app) => renderRow(app, key)).join('');
+  const rows = applications.map((app) => renderRow(app, key, page)).join('');
   const prevLink = page > 0 ? `<a href="?key=${encodeURIComponent(key)}&page=${page - 1}">← Oldingi</a>` : '<span class="muted">← Oldingi</span>';
   const nextLink =
     page + 1 < totalPages
@@ -70,6 +88,10 @@ function renderPage({ applications, total, page, key }) {
   .thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; margin: 2px; }
   .photos { min-width: 160px; }
   .pagination { margin-top: 16px; display: flex; gap: 16px; align-items: center; }
+  .status-badge { display: inline-block; color: #fff; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .status-form { margin-top: 6px; display: flex; gap: 4px; }
+  .status-form select { font-size: 12px; }
+  .status-form button { font-size: 12px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -80,10 +102,10 @@ function renderPage({ applications, total, page, key }) {
       <thead>
         <tr>
           <th>ID</th><th>Sana</th><th>Manzil</th><th>Turi</th><th>Narx</th>
-          <th>Telefon</th><th>Mijoz</th><th>Hujjat</th><th>Rasmlar</th>
+          <th>Telefon</th><th>Mijoz</th><th>Holat</th><th>Hujjat</th><th>Rasmlar</th>
         </tr>
       </thead>
-      <tbody>${rows || '<tr><td colspan="9" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="10" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
     </table>
   </div>
   <div class="pagination">${prevLink}${nextLink}</div>
