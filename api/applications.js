@@ -1,7 +1,7 @@
 // Admin page: view submitted applications.
 //   https://<project>.vercel.app/api/applications?key=ADMIN_KEY
 const { listApplications } = require('../lib/store');
-const { STATUS_ORDER, STATUS_LABELS, STATUS_COLORS } = require('../lib/statuses');
+const { STATUS_ORDER, STATUS_LABELS, STATUS_COLORS, ASSIGNEES } = require('../lib/statuses');
 
 const ADMIN_KEY = process.env.ADMIN_SECRET || process.env.WEBHOOK_SECRET;
 const PAGE_SIZE = 20;
@@ -31,14 +31,38 @@ function statusCell(app, key, page) {
   const options = STATUS_ORDER.map(
     (s) => `<option value="${s}" ${s === current ? 'selected' : ''}>${escapeHtml(STATUS_LABELS[s])}</option>`,
   ).join('');
+  const assigneeOptions = ASSIGNEES.map(
+    (name) =>
+      `<option value="${escapeHtml(name)}" ${name === app.assignee ? 'selected' : ''}>${escapeHtml(name)}</option>`,
+  ).join('');
+
+  const extraInfo = [
+    app.assignee ? `<div class="muted">👤 ${escapeHtml(app.assignee)}</div>` : '',
+    app.analogId ? `<div class="muted">🔗 Analog ID: ${escapeHtml(app.analogId)}</div>` : '',
+    app.rejectionReason ? `<div class="muted">✏️ Sabab: ${escapeHtml(app.rejectionReason)}</div>` : '',
+  ].join('');
+
   return `
     <span class="status-badge" style="background:${STATUS_COLORS[current]}">${escapeHtml(STATUS_LABELS[current])}</span>
-    <form method="POST" action="/api/set-status" class="status-form">
+    ${extraInfo}
+    <form method="POST" action="/api/set-status" class="status-form" onsubmit="return validateStatusForm(this)">
       <input type="hidden" name="key" value="${escapeHtml(key)}" />
       <input type="hidden" name="id" value="${escapeHtml(app.id)}" />
       <input type="hidden" name="page" value="${page}" />
-      <select name="status">${options}</select>
-      <button type="submit">O'zgartirish</button>
+      <select name="status" onchange="toggleStatusFields(this)">${options}</select>
+      <div class="extra-field assignee-field">
+        <select name="assignee">
+          <option value="">— tanlang —</option>
+          ${assigneeOptions}
+        </select>
+      </div>
+      <div class="extra-field analog-field">
+        <input type="text" name="analogId" placeholder="Analog ID" value="${escapeHtml(app.analogId || '')}" />
+      </div>
+      <div class="extra-field reason-field">
+        <textarea name="rejectionReason" placeholder="Rad etish sababi">${escapeHtml(app.rejectionReason || '')}</textarea>
+      </div>
+      <button type="submit">Saqlash</button>
     </form>`;
 }
 
@@ -89,9 +113,13 @@ function renderPage({ applications, total, page, key }) {
   .photos { min-width: 160px; }
   .pagination { margin-top: 16px; display: flex; gap: 16px; align-items: center; }
   .status-badge { display: inline-block; color: #fff; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
-  .status-form { margin-top: 6px; display: flex; gap: 4px; }
+  .status-form { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
   .status-form select { font-size: 12px; }
-  .status-form button { font-size: 12px; cursor: pointer; }
+  .status-form button { font-size: 12px; cursor: pointer; align-self: flex-end; }
+  .extra-field { display: none; width: 100%; }
+  .extra-field.show { display: block; }
+  .extra-field select, .extra-field input, .extra-field textarea { font-size: 12px; width: 150px; font-family: inherit; }
+  .extra-field textarea { height: 44px; resize: vertical; }
 </style>
 </head>
 <body>
@@ -109,6 +137,36 @@ function renderPage({ applications, total, page, key }) {
     </table>
   </div>
   <div class="pagination">${prevLink}${nextLink}</div>
+  <script>
+    function toggleStatusFields(select) {
+      const form = select.closest('form');
+      form.querySelectorAll('.extra-field').forEach((el) => el.classList.remove('show'));
+      const map = {
+        korib_chiqilmoqda: '.assignee-field',
+        analog_tayyor: '.analog-field',
+        rad_etildi: '.reason-field',
+      };
+      const sel = map[select.value];
+      if (sel) form.querySelector(sel).classList.add('show');
+    }
+    function validateStatusForm(form) {
+      const status = form.status.value;
+      if (status === 'korib_chiqilmoqda' && !form.assignee.value) {
+        alert("Foydalanuvchini tanlang");
+        return false;
+      }
+      if (status === 'analog_tayyor' && !form.analogId.value.trim()) {
+        alert('Analog ID kiriting');
+        return false;
+      }
+      if (status === 'rad_etildi' && !form.rejectionReason.value.trim()) {
+        alert('Rad etish sababini kiriting');
+        return false;
+      }
+      return true;
+    }
+    document.querySelectorAll('.status-form select[name="status"]').forEach(toggleStatusFields);
+  </script>
 </body>
 </html>`;
 }
