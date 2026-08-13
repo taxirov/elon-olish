@@ -1,10 +1,17 @@
 // Admin page: view submitted applications.
 //   https://<project>.vercel.app/api/applications?key=ADMIN_KEY
-const { listApplications } = require('../lib/store');
-const { STATUS_ORDER, STATUS_LABELS, STATUS_COLORS, ASSIGNEES } = require('../lib/statuses');
+const { listApplications, getStatusCounts } = require('../lib/store');
+const {
+  STATUS_ORDER,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  ASSIGNEES,
+  ASSIGNEE_COLORS,
+} = require('../lib/statuses');
 
 const ADMIN_KEY = process.env.ADMIN_SECRET || process.env.WEBHOOK_SECRET;
 const PAGE_SIZE = 20;
+const ACCENT = '#4f46e5';
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({
@@ -14,6 +21,10 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;',
   }[c]));
+}
+
+function currentStatusOf(app) {
+  return STATUS_ORDER.includes(app.status) ? app.status : 'yuborilgan';
 }
 
 function photoThumbs(fileIds, key) {
@@ -26,20 +37,25 @@ function photoThumbs(fileIds, key) {
     .join('');
 }
 
-function statusCell(app) {
-  const current = STATUS_ORDER.includes(app.status) ? app.status : 'yuborilgan';
-  const extraInfo = [
-    app.assignee ? `<div class="muted">👤 ${escapeHtml(app.assignee)}</div>` : '',
-    app.rejectionReason ? `<div class="muted">✏️ Sabab: ${escapeHtml(app.rejectionReason)}</div>` : '',
-  ].join('');
+function assigneeCell(app) {
+  if (!app.assignee) return '<span class="muted">—</span>';
+  const color = ASSIGNEE_COLORS[app.assignee] || '#6b7280';
+  const initials = app.assignee.slice(0, 2).toUpperCase();
+  return `<span class="avatar"><span class="dot" style="background:${color}">${escapeHtml(initials)}</span>${escapeHtml(app.assignee)}</span>`;
+}
 
+function statusCell(app) {
+  const current = currentStatusOf(app);
+  const reason = app.rejectionReason
+    ? `<div class="muted">✏️ Sabab: ${escapeHtml(app.rejectionReason)}</div>`
+    : '';
   return `
     <span class="status-badge" style="background:${STATUS_COLORS[current]}">${escapeHtml(STATUS_LABELS[current])}</span>
-    ${extraInfo}`;
+    ${reason}`;
 }
 
 function actionsCell(app, key, page) {
-  const current = STATUS_ORDER.includes(app.status) ? app.status : 'yuborilgan';
+  const current = currentStatusOf(app);
   const options = STATUS_ORDER.map(
     (s) => `<option value="${s}" ${s === current ? 'selected' : ''}>${escapeHtml(STATUS_LABELS[s])}</option>`,
   ).join('');
@@ -71,9 +87,10 @@ function actionsCell(app, key, page) {
 }
 
 function renderRow(app, key, page) {
+  const current = currentStatusOf(app);
   return `
-    <tr>
-      <td>${escapeHtml(app.id)}</td>
+    <tr data-status="${current}">
+      <td><span class="id-chip">${escapeHtml(app.id)}</span></td>
       <td>${app.analogId ? escapeHtml(app.analogId) : '<span class="muted">—</span>'}</td>
       <td>${escapeHtml(new Date(app.createdAt).toLocaleString('uz-UZ'))}</td>
       <td>${escapeHtml(app.regionName)}, ${escapeHtml(app.districtName)}<br/><span class="muted">${escapeHtml(app.address)}</span></td>
@@ -81,6 +98,7 @@ function renderRow(app, key, page) {
       <td>${escapeHtml(app.price)}</td>
       <td>${escapeHtml(app.phone)}</td>
       <td>${escapeHtml(app.fullName || 'Nomaʼlum')}${app.username ? `<br/><span class="muted">@${escapeHtml(app.username)}</span>` : ''}</td>
+      <td>${assigneeCell(app)}</td>
       <td>${statusCell(app)}</td>
       <td>${app.documentsVerifiedBadge ? '✅' : '—'}</td>
       <td class="photos">
@@ -93,7 +111,23 @@ function renderRow(app, key, page) {
     </tr>`;
 }
 
-function renderPage({ applications, total, page, key }) {
+function renderStatCards(statusCounts, total) {
+  const allCard = `
+    <div class="stat-card active" data-filter="all" onclick="setFilter('all')" style="--accent-color:${ACCENT}">
+      <div class="num">${total}</div>
+      <div class="label">Barchasi</div>
+    </div>`;
+  const cards = STATUS_ORDER.map(
+    (s) => `
+    <div class="stat-card" data-filter="${s}" onclick="setFilter('${s}')" style="--accent-color:${STATUS_COLORS[s]}">
+      <div class="num">${statusCounts[s] || 0}</div>
+      <div class="label">${escapeHtml(STATUS_LABELS[s])}</div>
+    </div>`,
+  ).join('');
+  return allCard + cards;
+}
+
+function renderPage({ applications, total, statusCounts, page, key }) {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rows = applications.map((app) => renderRow(app, key, page)).join('');
   const prevLink = page > 0 ? `<a href="?key=${encodeURIComponent(key)}&page=${page - 1}">← Oldingi</a>` : '<span class="muted">← Oldingi</span>';
@@ -108,49 +142,142 @@ function renderPage({ applications, total, page, key }) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Murojaatlar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
-  body { font-family: system-ui, sans-serif; margin: 24px; background: #f7f7f8; color: #1a1a1a; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .muted { color: #888; font-size: 12px; }
-  table { border-collapse: collapse; width: 100%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; font-size: 13px; }
-  th { background: #fafafa; position: sticky; top: 0; }
-  .thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; margin: 2px; }
-  .photos { min-width: 160px; }
-  .pagination { margin-top: 16px; display: flex; gap: 16px; align-items: center; }
-  .status-badge { display: inline-block; color: #fff; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
-  .status-form { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-  .status-form select { font-size: 12px; }
-  .status-form button { font-size: 12px; cursor: pointer; align-self: flex-end; }
+  :root {
+    --bg: #f3f4f8;
+    --card-bg: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --muted: #6b7280;
+    --accent: ${ACCENT};
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 16px rgba(16,24,40,.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--text);
+    margin: 0;
+    padding: 32px clamp(16px, 4vw, 48px);
+  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 24px; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .topbar .count-badge { background: var(--accent); color: #fff; font-size: 13px; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+  .topbar p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .search-box input {
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
+    font-size: 14px; width: 260px; max-width: 60vw; background: #fff; font-family: inherit;
+  }
+  .search-box input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 20px; min-width: 118px; cursor: pointer; box-shadow: var(--shadow);
+    border-top: 3px solid var(--accent-color, var(--accent));
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,24,40,.1); }
+  .stat-card.active { outline: 2px solid var(--accent-color, var(--accent)); outline-offset: -1px; }
+  .stat-card .num { font-size: 22px; font-weight: 700; line-height: 1.2; }
+  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+
+  .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; }
+  .table-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 12px 14px; text-align: left; vertical-align: top; font-size: 13px; border-bottom: 1px solid var(--border); }
+  thead th { background: #fafbfc; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); position: sticky; top: 0; white-space: nowrap; }
+  tbody tr:hover { background: #f9fafb; }
+  tbody tr:last-child td { border-bottom: none; }
+  .muted { color: var(--muted); font-size: 12px; }
+
+  .id-chip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #eef2ff; color: #4338ca; padding: 3px 8px; border-radius: 6px; }
+
+  .avatar { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .avatar .dot { width: 22px; height: 22px; min-width: 22px; border-radius: 50%; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+  .status-badge { display: inline-block; color: #fff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+
+  .photos { min-width: 170px; }
+  .thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; margin: 2px; cursor: zoom-in; border: 1px solid var(--border); transition: transform .15s ease; }
+  .thumb:hover { transform: scale(1.08); }
+
+  .status-form { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 150px; }
+  .status-form select, .status-form input, .status-form textarea {
+    font-size: 12px; border-radius: 8px; border: 1px solid var(--border); padding: 6px 8px; font-family: inherit; width: 100%;
+  }
+  .status-form button {
+    background: var(--accent); color: #fff; border: none; cursor: pointer;
+    align-self: flex-end; padding: 7px 14px; font-weight: 600; border-radius: 8px; font-size: 12px;
+  }
+  .status-form button:hover { background: #4338ca; }
   .extra-field { display: none; width: 100%; }
   .extra-field.show { display: block; }
-  .extra-field select, .extra-field input, .extra-field textarea { font-size: 12px; width: 150px; font-family: inherit; }
   .extra-field textarea { height: 44px; resize: vertical; }
-  .thumb { cursor: zoom-in; }
-  .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; }
+
+  .pagination { margin-top: 20px; display: flex; gap: 20px; align-items: center; justify-content: center; }
+  .pagination a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 13px; }
+  .pagination a:hover { text-decoration: underline; }
+
+  .lightbox { display: none; position: fixed; inset: 0; background: rgba(15,17,23,.9); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; }
   .lightbox.show { display: flex; }
-  .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 6px; }
+  .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 </style>
 </head>
 <body>
-  <h1>Murojaatlar (${total})</h1>
-  <p class="muted">Sahifa ${page + 1} / ${totalPages}</p>
-  <div style="overflow-x:auto">
-    <table>
-      <thead>
-        <tr>
-          <th>Murojaat ID</th><th>Analog ID</th><th>Sana</th><th>Manzil</th><th>Turi</th><th>Narx</th>
-          <th>Telefon</th><th>Mijoz</th><th>Holat</th><th>Hujjat</th><th>Rasmlar</th><th>Amallar</th>
-        </tr>
-      </thead>
-      <tbody>${rows || '<tr><td colspan="12" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
-    </table>
+  <div class="topbar">
+    <div>
+      <h1>🏡 Murojaatlar <span class="count-badge">${total}</span></h1>
+      <p>Barcha kelib tushgan e'lon arizalari bitta joyda</p>
+    </div>
+    <div class="search-box">
+      <input id="search" type="text" placeholder="Qidirish: ism, manzil, telefon, ID..." oninput="applyFilters()" />
+    </div>
   </div>
-  <div class="pagination">${prevLink}${nextLink}</div>
+
+  <div class="stats">${renderStatCards(statusCounts, total)}</div>
+
+  <div class="card">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Murojaat ID</th><th>Analog ID</th><th>Sana</th><th>Manzil</th><th>Turi</th><th>Narx</th>
+            <th>Telefon</th><th>Mijoz</th><th>Tekshiruvchi</th><th>Holat</th><th>Hujjat</th><th>Rasmlar</th><th>Amallar</th>
+          </tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="13" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="pagination">${prevLink}<span class="muted">Sahifa ${page + 1} / ${totalPages}</span>${nextLink}</div>
+
   <div id="lightbox" class="lightbox" onclick="closeLightbox()">
     <img id="lightbox-img" src="" alt="" />
   </div>
+
   <script>
+    let currentFilter = 'all';
+
+    function setFilter(status) {
+      currentFilter = status;
+      document.querySelectorAll('.stat-card').forEach((c) => c.classList.toggle('active', c.dataset.filter === status));
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const q = document.getElementById('search').value.trim().toLowerCase();
+      document.querySelectorAll('tbody tr[data-status]').forEach((tr) => {
+        const matchesStatus = currentFilter === 'all' || tr.dataset.status === currentFilter;
+        const matchesSearch = !q || tr.textContent.toLowerCase().includes(q);
+        tr.style.display = matchesStatus && matchesSearch ? '' : 'none';
+      });
+    }
+
     function openLightbox(src) {
       document.getElementById('lightbox-img').src = src;
       document.getElementById('lightbox').classList.add('show');
@@ -162,6 +289,7 @@ function renderPage({ applications, total, page, key }) {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeLightbox();
     });
+
     function toggleStatusFields(select) {
       const form = select.closest('form');
       form.querySelectorAll('.extra-field').forEach((el) => el.classList.remove('show'));
@@ -202,11 +330,11 @@ module.exports = async (req, res) => {
   }
 
   const page = Math.max(0, parseInt(req.query.page, 10) || 0);
-  const { applications, total } = await listApplications({
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
-  });
+  const [{ applications, total }, statusCounts] = await Promise.all([
+    listApplications({ limit: PAGE_SIZE, offset: page * PAGE_SIZE }),
+    getStatusCounts(),
+  ]);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.status(200).send(renderPage({ applications, total, page, key: ADMIN_KEY }));
+  res.status(200).send(renderPage({ applications, total, statusCounts, page, key: ADMIN_KEY }));
 };
