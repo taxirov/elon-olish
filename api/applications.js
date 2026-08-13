@@ -96,7 +96,11 @@ function renderRow(app, key, page) {
       <td><span class="id-chip">${escapeHtml(app.id)}</span></td>
       <td>${app.analogId ? escapeHtml(app.analogId) : '<span class="muted">—</span>'}</td>
       <td>${escapeHtml(new Date(app.createdAt).toLocaleString('uz-UZ'))}</td>
-      <td>${escapeHtml(app.regionName)}, ${escapeHtml(app.districtName)}<br/><span class="muted">${escapeHtml(app.address)}</span></td>
+      <td>${escapeHtml(app.regionName)}, ${escapeHtml(app.districtName)}<br/><span class="muted">${escapeHtml(app.address)}</span>${
+        app.location
+          ? `<br/><a class="map-link" href="https://maps.google.com/?q=${app.location.latitude},${app.location.longitude}" target="_blank">${icon('mapPin', 12)}Xaritada ko'rish</a>`
+          : ''
+      }</td>
       <td>${escapeHtml(app.propertyType)}</td>
       <td>${escapeHtml(app.price)}</td>
       <td>${escapeHtml(app.phone)}</td>
@@ -208,6 +212,8 @@ function renderPage({ applications, total, statusCounts, page, key }) {
   .icon { vertical-align: middle; flex-shrink: 0; }
   .note { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
   .doc-yes { color: #16a34a; display: inline-flex; }
+  .map-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--accent); text-decoration: none; margin-top: 4px; }
+  .map-link:hover { text-decoration: underline; }
 
   .photos { min-width: 170px; }
   .thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; margin: 2px; cursor: zoom-in; border: 1px solid var(--border); transition: transform .15s ease; }
