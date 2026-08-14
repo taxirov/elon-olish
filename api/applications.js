@@ -101,17 +101,16 @@ function renderRow(app, key, page) {
           ? `<br/><a class="map-link" href="https://maps.google.com/?q=${app.location.latitude},${app.location.longitude}" target="_blank">${icon('mapPin', 12)}Xaritada ko'rish</a>`
           : ''
       }</td>
-      <td>${escapeHtml(app.propertyType)}</td>
+      <td>${escapeHtml(app.propertyType)}<br/>${
+        app.documentsVerifiedBadge
+          ? `<span class="doc-badge yes">${icon('fileCheck', 13)}Hujjatlar</span>`
+          : `<span class="doc-badge no">${icon('xCircle', 13)}Hujjatlar</span>`
+      }</td>
       <td>${escapeHtml(app.price)}</td>
       <td>${escapeHtml(app.phone)}</td>
       <td>${escapeHtml(app.fullName || 'Nomaʼlum')}${app.username ? `<br/><span class="muted">@${escapeHtml(app.username)}</span>` : ''}</td>
       <td>${assigneeCell(app)}</td>
       <td>${statusCell(app)}</td>
-      <td>${
-        app.documentsVerifiedBadge
-          ? `<span class="doc-badge yes">${icon('fileCheck', 13)}Hujjatlar</span>`
-          : `<span class="doc-badge no">${icon('xCircle', 13)}Hujjatlar</span>`
-      }</td>
       <td class="photos">
         <div class="muted">Tashqi (${app.exteriorPhotos.length})</div>
         ${photoThumbs(app.exteriorPhotos, key)}
@@ -266,10 +265,10 @@ function renderPage({ applications, total, statusCounts, page, key }) {
         <thead>
           <tr>
             <th>Murojaat ID</th><th>Analog ID</th><th>Sana</th><th>Manzil</th><th>Turi</th><th>Narx</th>
-            <th>Telefon</th><th>Mijoz</th><th>Tekshiruvchi</th><th>Holat</th><th>Hujjat</th><th>Rasmlar</th><th>Amallar</th>
+            <th>Telefon</th><th>Mijoz</th><th>Tekshiruvchi</th><th>Holat</th><th>Rasmlar</th><th>Amallar</th>
           </tr>
         </thead>
-        <tbody>${rows || '<tr><td colspan="13" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
+        <tbody>${rows || '<tr><td colspan="12" class="muted">Hozircha murojaatlar yo\'q</td></tr>'}</tbody>
       </table>
     </div>
   </div>
