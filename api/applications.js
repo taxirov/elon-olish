@@ -214,7 +214,7 @@ function renderPage({ applications, total, statusCounts, page, key }) {
   .status-badge { display: inline-flex; align-items: center; gap: 5px; color: #fff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
   .icon { vertical-align: middle; flex-shrink: 0; }
   .note { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
-  .doc-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .doc-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; margin-top: 6px; }
   .doc-badge.yes { background: #dcfce7; color: #15803d; }
   .doc-badge.no { background: #fee2e2; color: #b91c1c; }
   .map-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--accent); text-decoration: none; margin-top: 4px; }
